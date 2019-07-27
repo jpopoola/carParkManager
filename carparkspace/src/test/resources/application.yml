@@ -1,0 +1,19 @@
+server:
+  port: 7071
+
+kafka:
+  brokerUrl: localhost:9092
+  applicationId: vehicle.loading.service
+
+
+car.park:
+  barrier.event.topic: car-park-barrier-events
+  availability.output.topic: car-park-barrier-events
+  store: hackton.car.park.space.store
+  zone:
+    zone-1:
+      capacity: 10
+      type: Shift
+    zone-2:
+      capacity: 30
+      type: Reserved

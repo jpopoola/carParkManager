@@ -1,0 +1,18 @@
+car.park:
+  store: hackton.car.park.space.store
+  zone:
+    capacity:
+      SHIFT: 30
+      RESERVED: 10
+      GENERAL: 20
+      TOTAL: 60
+kafka:
+  bootstrap.servers: localhost:9092
+  application.id: sky.hackton.kstream.car.park.space.manager
+  auto.offset.reset: latest
+  producer.compression.type: gzip
+
+topics:
+  barrierEventTopic: car-park-barrier-events
+  availabilityOutputTopic: car-park-availability-events
+
