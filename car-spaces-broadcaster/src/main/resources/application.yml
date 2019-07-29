@@ -1,0 +1,13 @@
+server:
+  port: 7072
+
+kafka:
+  topic: car-park-availability-events
+  brokerUrl: localhost:9092
+  groupId: car-park-broadcaster
+  resetConfig: latest
+  pollDuration: 1000
+
+
+webPortal:
+  endPoint: http://skyparkme.us-east-1.elasticbeanstalk.com/rest/service/park

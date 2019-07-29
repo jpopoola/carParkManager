@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import csp.hackathon.carparkspacemanager.config.TopicsConfiguration;
 import csp.hackathon.carparkspacemanager.domian.BarrierEvent;
 import csp.hackathon.carparkspacemanager.domian.CarParkCapacity;
+import csp.hackathon.carparkspacemanager.domian.CarParkSpaces;
 import csp.hackathon.carparkspacemanager.domian.CarParkStatus;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
@@ -54,6 +55,9 @@ public class CarParkSpaceManagerStreams {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private Map<String, CarParkCapacity> currentCarParkStatus = new HashMap<>();
+
+    private CarParkSpaces carParkSpaces = new CarParkSpaces();
+
     @PostConstruct
     private void SetUp(){
          System.out.println("rawSourceTopic " + topicsConfiguration.getBarrierEventTopic());
@@ -67,6 +71,22 @@ public class CarParkSpaceManagerStreams {
         currentCarParkStatus.put("General", GetCarParkCapacity("General", generalCapacity));
         currentCarParkStatus.put("Shift", GetCarParkCapacity("Shift", shiftCapacity));
         currentCarParkStatus.put("Reserved", GetCarParkCapacity("Reserved", reservedCapacity));
+
+        carParkSpaces.setCp1General(generalCapacity);
+        carParkSpaces.setCp1Reserved(reservedCapacity);
+        carParkSpaces.setCp1Shift(shiftCapacity);
+
+        carParkSpaces.setCp2General(generalCapacity);
+        carParkSpaces.setCp2Reserved(reservedCapacity);
+        carParkSpaces.setCp2Shift(shiftCapacity);
+
+        carParkSpaces.setGeneralBays(generalCapacity);
+        carParkSpaces.setGrasshoppers(generalCapacity);
+        carParkSpaces.setGoals(generalCapacity);
+
+        carParkSpaces.setWycombeHouse(generalCapacity);
+        carParkSpaces.setWkyeGreen(generalCapacity);
+        carParkSpaces.setSyonLane(generalCapacity);
     }
 
     public Topology createTopology() {
@@ -114,34 +134,52 @@ public class CarParkSpaceManagerStreams {
         try {
             BarrierEvent barrierEvent = objectMapper.readValue(value, BarrierEvent.class);
             CarParkCapacity carParkCapacity = currentCarParkStatus.get(barrierEvent.getBarrierType());
-            int currentStatus = carParkCapacity.getCurrentCapacity();
-            if(barrierEvent.isEntry())
-                currentStatus--;
-            else
-                currentStatus++;
-
-            CarParkStatus status = new CarParkStatus();
-            status.setCarParkTypeId(barrierEvent.getBarrierType());
-            if(currentStatus <= 0){
-                status.setCount("FULL");
-                carParkCapacity.setCurrentCapacity(0);
-            }
-            else if(currentStatus >= carParkCapacity.getMaxCapacity()){
-                status.setCount(Integer.toString(carParkCapacity.getMaxCapacity()));
-                carParkCapacity.setCurrentCapacity(carParkCapacity.getMaxCapacity());
-            }
-            else{
-                status.setCount(Integer.toString(currentStatus));
-                carParkCapacity.setCurrentCapacity(currentStatus);
-            }
-
-            return objectMapper.writeValueAsString(status);
+            return updateCapacity(barrierEvent.isEntry(), barrierEvent.getBarrierType(), carParkCapacity);
 
         }catch(IOException ex){
             System.out.println(ex);
         }
 
         return "";
+    }
+
+    private String reTransform(String value){
+        try {
+            BarrierEvent barrierEvent = objectMapper.readValue(value, BarrierEvent.class);
+            if((barrierEvent.getBarrierType().equals("Shift") || barrierEvent.getBarrierType().equals("Reserved")) &&
+                    barrierEvent.isEntry()){
+                CarParkCapacity carParkCapacity = currentCarParkStatus.get("General");
+                return updateCapacity(false, "General", carParkCapacity);
+            }
+        }catch(IOException ex){
+            System.out.println(ex);
+        }
+
+        return null;
+    }
+
+    private String updateCapacity(boolean isEntry , String barrierType, CarParkCapacity carParkCapacity) throws JsonProcessingException {
+        int currentStatus = carParkCapacity.getCurrentCapacity();
+        if(isEntry)
+            currentStatus--;
+        else
+            currentStatus++;
+
+        String value;
+        if(currentStatus <= 0){
+            value = "FULL";
+            carParkCapacity.setCurrentCapacity(0);
+        }
+        else if(currentStatus >= carParkCapacity.getMaxCapacity()){
+            value = Integer.toString(carParkCapacity.getMaxCapacity());
+            carParkCapacity.setCurrentCapacity(carParkCapacity.getMaxCapacity());
+        }
+        else{
+            value = Integer.toString(currentStatus);
+            carParkCapacity.setCurrentCapacity(currentStatus);
+        }
+
+        return updateCarSpaces(barrierType, value);
     }
 
     private CarParkCapacity GetCarParkCapacity(String label, String maxCapacity){
@@ -151,6 +189,22 @@ public class CarParkSpaceManagerStreams {
         capacity.setCurrentCapacity(Integer.parseInt(maxCapacity));
 
         return capacity;
+    }
+
+    private String updateCarSpaces(String barrierType, String value) throws JsonProcessingException {
+        switch(barrierType){
+            case "General":
+                carParkSpaces.setCp1General(value);
+                break;
+            case "Shift":
+                carParkSpaces.setCp1Shift(value);
+                break;
+            case "Reserved":
+                carParkSpaces.setCp1Reserved(value);
+                break;
+        }
+
+        return objectMapper.writeValueAsString(carParkSpaces);
     }
 
     @PreDestroy

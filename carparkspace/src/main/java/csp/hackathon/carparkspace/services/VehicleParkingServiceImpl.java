@@ -19,9 +19,9 @@ public class VehicleParkingServiceImpl implements VehicleParkingService {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public boolean ParkCar(){
+    public boolean ParkCar(String barrierType, boolean isEntry){
         try {
-            String nextEvent = generateBarrierEvent();
+            String nextEvent = generateBarrierEvent(barrierType, getBarrierId(barrierType, isEntry), isEntry);
             vehicleParkingProducer.sendMessage(rawSourceTopic, nextEvent);
             System.out.println(nextEvent);
         }catch (JsonProcessingException ex){
@@ -30,13 +30,35 @@ public class VehicleParkingServiceImpl implements VehicleParkingService {
         return true;
     }
 
-    private String generateBarrierEvent() throws JsonProcessingException {
+    private String generateBarrierEvent(String barrierType, String barrierId, boolean isEntry) throws JsonProcessingException {
         BarrierEvent event = new BarrierEvent();
-        event.setBarrierId("1");
-        event.setBarrierType("General");
-        event.setEntry(true);
-        event.setCarParkId("1");
+        event.setBarrierId(barrierId);
+        event.setBarrierType(barrierType);
+        event.setEntry(isEntry);
+        event.setCarParkId("Sky-Parking");
         //event.setTimestamp(LocalDateTime.now());
         return objectMapper.writeValueAsString(event);
+    }
+
+    private String getBarrierId(String type, boolean isEntry){
+        switch(type){
+            case "General":
+                if(isEntry)
+                    return "General-Entry";
+                else
+                    return "General-Exit";
+            case "Shift":
+                if(isEntry)
+                    return "Shift-Entry";
+                else
+                    return "Shift-Exit";
+            case "Reserved":
+                if(isEntry)
+                    return "Reserved-Entry";
+                else
+                    return "Reserved-Exit";
+        }
+
+        return "Not-Identifiable";
     }
 }
