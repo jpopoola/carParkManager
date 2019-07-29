@@ -3,10 +3,7 @@ package csp.hackathon.carparkspacemanager.streams;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import csp.hackathon.carparkspacemanager.config.TopicsConfiguration;
-import csp.hackathon.carparkspacemanager.domian.BarrierEvent;
-import csp.hackathon.carparkspacemanager.domian.CarParkCapacity;
-import csp.hackathon.carparkspacemanager.domian.CarParkSpaces;
-import csp.hackathon.carparkspacemanager.domian.CarParkStatus;
+import csp.hackathon.carparkspacemanager.domian.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
@@ -51,6 +48,8 @@ public class CarParkSpaceManagerStreams {
     private String autoOffsetReset;
 
     private KafkaStreams streams;
+
+    private EventStatus previousEventStatus = new EventStatus();
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -134,8 +133,16 @@ public class CarParkSpaceManagerStreams {
         try {
             BarrierEvent barrierEvent = objectMapper.readValue(value, BarrierEvent.class);
             CarParkCapacity carParkCapacity = currentCarParkStatus.get(barrierEvent.getBarrierType());
-            return updateCapacity(barrierEvent.isEntry(), barrierEvent.getBarrierType(), carParkCapacity);
+            String result = updateCapacity(barrierEvent.isEntry(), barrierEvent.getBarrierType(), carParkCapacity);
 
+            if(barrierEvent.getBarrierType().equals("Shift") || barrierEvent.getBarrierType().equals("Reserved")){
+                CarParkCapacity generalCarParkCapacity = currentCarParkStatus.get("General");
+                result = updateCapacity(!barrierEvent.isEntry(), "General", generalCarParkCapacity);
+            }
+
+            previousEventStatus.setBarrierType(barrierEvent.getBarrierType());
+            previousEventStatus.setEntry(barrierEvent.isEntry());
+            return result;
         }catch(IOException ex){
             System.out.println(ex);
         }
@@ -167,7 +174,7 @@ public class CarParkSpaceManagerStreams {
 
         String value;
         if(currentStatus <= 0){
-            value = "-1";
+            value = "0";
             carParkCapacity.setCurrentCapacity(0);
         }
         else if(currentStatus >= carParkCapacity.getMaxCapacity()){
