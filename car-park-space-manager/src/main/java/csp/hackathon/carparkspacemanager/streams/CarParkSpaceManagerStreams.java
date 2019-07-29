@@ -167,7 +167,7 @@ public class CarParkSpaceManagerStreams {
 
         String value;
         if(currentStatus <= 0){
-            value = "FULL";
+            value = "-1";
             carParkCapacity.setCurrentCapacity(0);
         }
         else if(currentStatus >= carParkCapacity.getMaxCapacity()){

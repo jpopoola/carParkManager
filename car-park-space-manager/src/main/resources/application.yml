@@ -2,10 +2,10 @@ car.park:
   store: hackton.car.park.space.store
   zone:
     capacity:
-      SHIFT: 30
+      SHIFT: 15
       RESERVED: 10
       GENERAL: 20
-      TOTAL: 60
+      TOTAL: 45
 kafka:
   bootstrap.servers: localhost:9092
   application.id: sky.hackton.kstream.car.park.space.manager
